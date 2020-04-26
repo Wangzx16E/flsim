@@ -67,6 +67,9 @@ def get_testloader(testset, batch_size):
     return torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=True)
 
 
+def get_state(model):
+    return model.state_dict()
+    
 def extract_weights(model):
     weights = []
     for name, weight in model.named_parameters():
