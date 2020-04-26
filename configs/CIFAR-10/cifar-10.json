@@ -20,7 +20,8 @@
     "model": "CIFAR-10",
     "paths": {
         "data": "./data",
-        "model": "./models"
+        "model": "./models",
+        "reports": "./CIFAR_reports"
     },
     "server": "basic"
 }

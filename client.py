@@ -104,6 +104,7 @@ class Client(object):
         # Generate report for server
         self.report = Report(self)
         self.report.weights = weights
+        self.report.state_dict = fl_model.get_state(self.model)
 
         # Perform model testing if applicable
         if self.do_test:

@@ -54,6 +54,8 @@ def get_trainloader(trainset, batch_size):  # CHECKME
 def get_testloader(testset, batch_size):  # CHECKME
     return torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=True)
 
+def get_state(model):
+    return model.state_dict()
 
 def extract_weights(model):  # CHECKME
     weights = []

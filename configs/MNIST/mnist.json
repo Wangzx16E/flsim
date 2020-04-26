@@ -20,7 +20,8 @@
     "model": "MNIST",
     "paths": {
         "data": "./data",
-        "model": "./models"
+        "model": "./models",
+        "reports": "./MNIST_reports"
     },
     "server": "basic"
 }

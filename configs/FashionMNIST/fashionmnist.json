@@ -20,7 +20,8 @@
     "model": "FashionMNIST",
     "paths": {
         "data": "./data",
-        "model": "./models"
+        "model": "./models",
+        "reports": "./FashionMNIST_reports"
     },
     "server": "basic"
 }

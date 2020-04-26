@@ -8,7 +8,8 @@ import sys
 from threading import Thread
 import torch
 import utils.dists as dists  # pylint: disable=no-name-in-module
-
+import codecs
+import json
 
 class Server(object):
     """Basic federated learning server."""
@@ -143,11 +144,11 @@ class Server(object):
             logging.info('Training: {} rounds\n'.format(rounds))
 
         # Perform rounds of federated learning
-        for round in range(1, rounds + 1):
-            logging.info('**** Round {}/{} ****'.format(round, rounds))
+        for round_num in range(1, rounds + 1):
+            logging.info('**** Round {}/{} ****'.format(round_num, rounds))
 
             # Run the federated learning round
-            accuracy = self.round()
+            accuracy = self.round(round_num)
 
             # Break loop when target accuracy is met
             if target_accuracy and (accuracy >= target_accuracy):
@@ -159,7 +160,7 @@ class Server(object):
                 pickle.dump(self.saved_reports, f)
             logging.info('Saved reports: {}'.format(reports_path))
 
-    def round(self):
+    def round(self, round_num):
         import fl_model  # pylint: disable=import-error
 
         # Select clients to participate in the round
@@ -185,7 +186,7 @@ class Server(object):
 
         # Extract flattened weights (if applicable)
         if self.config.paths.reports:
-            self.save_reports(round, reports)
+            self.save_reports(round_num, reports)
 
         # Save updated global model
         self.save_model(self.model, self.config.paths.model)
@@ -351,13 +352,11 @@ class Server(object):
         torch.save(model.state_dict(), path)
         logging.info('Saved global model: {}'.format(path))
 
-    def save_reports(self, round, reports):
+    def save_reports(self, round_num, reports):
         import fl_model  # pylint: disable=import-error
 
         if reports:
-            self.saved_reports['round{}'.format(round)] = [(report.client_id, self.flatten_weights(
-                report.weights)) for report in reports]
+            self.saved_reports['round{}'.format(round_num)] = [(report.client_id, report.state_dict) for report in reports]
 
-        # Extract global weights
-        self.saved_reports['w{}'.format(round)] = self.flatten_weights(
-            fl_model.extract_weights(self.model))
+        # Extract global structure
+        self.saved_reports['w{}'.format(round_num)] = fl_model.get_state(self.model)
