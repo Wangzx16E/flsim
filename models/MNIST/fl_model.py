@@ -2,6 +2,7 @@ import load_data
 import logging
 import torch
 import torch.nn as nn
+import torch.nn.utils.prune as prune 
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
@@ -45,6 +46,7 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(4 * 4 * 50, 500)
         self.fc2 = nn.Linear(500, 10)
 
+
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.max_pool2d(x, 2, 2)
@@ -67,16 +69,15 @@ def get_trainloader(trainset, batch_size):
 def get_testloader(testset, batch_size):
     return torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=True)
 
-def get_state(model):
-    return model.state_dict()
-
+#this one to extract update weights to update model.only need weight, not weight_orig
 def extract_weights(model):
     weights = []
     for name, weight in model.to(torch.device('cpu')).named_parameters():  # pylint: disable=no-member
-        if weight.requires_grad:
+        if(weight.requires_grad):
             weights.append((name, weight.data))
-
+    
     return weights
+
 
 
 def load_weights(model, weights):
@@ -90,6 +91,9 @@ def load_weights(model, weights):
 def train(model, trainloader, optimizer, epochs):
     model.to(device)
     model.train()
+
+
+
     for epoch in range(1, epochs + 1):
         for batch_id, (image, label) in enumerate(trainloader):
             image, label = image.to(device), label.to(device)

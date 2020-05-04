@@ -10,6 +10,7 @@ import torch
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import codecs
 import json
+import matplotlib as plt
 
 class Server(object):
     """Basic federated learning server."""
@@ -29,7 +30,7 @@ class Server(object):
 
         # Set up simulated server
         self.load_data()
-        self.load_model()
+        self.load_model() #add pruning
         self.make_clients(total_clients)
 
     def load_data(self):
@@ -78,6 +79,7 @@ class Server(object):
             self.saved_reports = {}
             self.save_reports(0, [])  # Save initial model
 
+        
     def make_clients(self, num_clients):
         IID = self.config.data.IID
         labels = self.loader.labels
@@ -143,18 +145,21 @@ class Server(object):
         else:
             logging.info('Training: {} rounds\n'.format(rounds))
 
+        #plot a accuray vs round number
+        accuracy_list = []
         # Perform rounds of federated learning
         for round_num in range(1, rounds + 1):
             logging.info('**** Round {}/{} ****'.format(round_num, rounds))
 
             # Run the federated learning round
             accuracy = self.round(round_num)
-
+            accuracy_list.append(acuracy)
             # Break loop when target accuracy is met
             if target_accuracy and (accuracy >= target_accuracy):
                 logging.info('Target accuracy reached.')
+                plt.plot(range(1, rounds + 1), accuracy_list)
                 break
-
+           
         if reports_path:
             with open(reports_path, 'wb') as f:
                 pickle.dump(self.saved_reports, f)
@@ -169,6 +174,9 @@ class Server(object):
         # Configure sample clients
         self.configuration(sample_clients)
 
+        if(round_num != 1): 
+            for client in sample_clients: client.PRUNE = True
+        
         # Run clients using multithreading for better parallelism
         threads = [Thread(target=client.run) for client in sample_clients]
         [t.start() for t in threads]
@@ -202,6 +210,8 @@ class Server(object):
 
         logging.info('Average accuracy: {:.2f}%\n'.format(100 * accuracy))
         return accuracy
+
+
 
     # Federated learning phases
 
@@ -356,7 +366,7 @@ class Server(object):
         import fl_model  # pylint: disable=import-error
 
         if reports:
-            self.saved_reports['round{}'.format(round_num)] = [(report.client_id, report.state_dict) for report in reports]
+            self.saved_reports['round{}'.format(round_num)] = [(report.client_id, report.weights) for report in reports]
 
         # Extract global structure
-        self.saved_reports['w{}'.format(round_num)] = fl_model.get_state(self.model)
+        self.saved_reports['w{}'.format(round_num)] = fl_model.extract_weights(self.model)

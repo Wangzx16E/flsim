@@ -1,6 +1,8 @@
 import logging
 import torch
 import torch.nn as nn
+import torch.nn.utils.prune as prune 
+import torch.nn.functional as F
 import torch.optim as optim
 
 
@@ -9,6 +11,7 @@ class Client(object):
 
     def __init__(self, client_id):
         self.client_id = client_id
+        self.PRUNE = False
 
     def __repr__(self):
         return 'Client #{}: {} samples in labels: {}'.format(
@@ -71,11 +74,14 @@ class Client(object):
         # Download most recent global model
         path = model_path + '/global'
         self.model = fl_model.Net()
+        #from round2, the global model should have prune parameters
+        if(self.PRUNE): self.setup_pruning
         self.model.load_state_dict(torch.load(path))
         self.model.eval()
 
         # Create optimizer
         self.optimizer = fl_model.get_optimizer(self.model)
+        
 
     def run(self):
         # Perform federated learning task
@@ -87,34 +93,48 @@ class Client(object):
         # Report results to server.
         return self.upload(self.report)
 
+
     # Machine learning tasks
     def train(self):
         import fl_model  # pylint: disable=import-error
 
         logging.info('Training on client #{}'.format(self.client_id))
 
-        # Perform model training
+        # Perform model training with prune
         trainloader = fl_model.get_trainloader(self.trainset, self.batch_size)
+
+       
         fl_model.train(self.model, trainloader,
                        self.optimizer, self.epochs)
-
+        
         # Extract model weights and biases
         weights = fl_model.extract_weights(self.model)
-
+       
         # Generate report for server
-        self.report = Report(self)
+        self.report = Report(self) 
         self.report.weights = weights
-        self.report.state_dict = fl_model.get_state(self.model)
+        
 
         # Perform model testing if applicable
         if self.do_test:
             testloader = fl_model.get_testloader(self.testset, 1000)
             self.report.accuracy = fl_model.test(self.model, testloader)
 
+    #prune the model
+    def setup_pruning(self):
+        if(self.PRUNE):
+            for _ in range(3):
+                prune.l1_unstructured(self.model.conv2, name="weight", amount=0.1)
+                prune.remove(self.model.conv2, "weight")
+                prune.l1_unstructured(self.model.fc1, name='weight', amount=0.1)
+                prune.remove(self.model.fc1, "weight")
+
     def test(self):
         # Perform model testing
         raise NotImplementedError
 
+
+    
 
 class Report(object):
     """Federated learning client report."""
